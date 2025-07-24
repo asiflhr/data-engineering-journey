@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+*.egg-info/
+
+# IDE/Editor folders
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets and credentials
+.env
+*.env
+credentials.json
+*.pem
+
+# Large data files (track small samples if needed, but not large ones)
+data/*.csv
+data/*.json
+data/*.parquet
+!data/sample_sales.csv # Example of NOT ignoring a specific file

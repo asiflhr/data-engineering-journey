@@ -1,0 +1,16 @@
+# Core Libraries
+pandas
+requests
+
+# Database Connectors
+psycopg2-binary # For PostgreSQL
+
+# Workflow Orchestration
+apache-airflow
+
+# Big Data Processing
+pyspark
+
+# Linters/Formatters (Good Practice)
+black
+flake8
