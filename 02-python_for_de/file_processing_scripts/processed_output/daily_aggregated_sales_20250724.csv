@@ -1,0 +1,12 @@
+ProductCategory,Region,TotalSales,AveragePrice,TransactionCount
+Electronics,North,2620.00,327.50,8
+Books,East,185.50,37.10,5
+Clothing,South,305.00,76.25,4
+Home & Kitchen,West,570.00,142.50,4
+Electronics,West,1750.00,875.00,2
+Books,North,20.00,20.00,1
+Clothing,East,345.00,86.25,4
+Books,South,60.00,60.00,1
+Home & Kitchen,North,80.00,80.00,1
+Home & Kitchen,South,470.00,156.67,3
+Books,West,185.00,61.67,3

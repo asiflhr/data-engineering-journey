@@ -1,6 +1,7 @@
 # Core Libraries
 pandas
 requests
+pendulum
 
 # Database Connectors
 psycopg2-binary # For PostgreSQL
