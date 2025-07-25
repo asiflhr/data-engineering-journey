@@ -5,6 +5,7 @@ pendulum
 
 # Database Connectors
 psycopg2-binary # For PostgreSQL
+SQLAlchemy
 
 # Workflow Orchestration
 apache-airflow
