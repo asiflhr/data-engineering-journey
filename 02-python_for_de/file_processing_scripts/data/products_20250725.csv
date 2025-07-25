@@ -1,0 +1,11 @@
+ProductID,Name,Category,BasePrice,SupplierID
+P001,Laptop Pro,Electronics,1200.00,S001
+P002,Mechanical Keyboard,Electronics,120.00,S002
+P003,Mystery Novel,Books,15.50,S003
+P004,Ergonomic Mouse,Electronics,45.00,S001
+P005,T-Shirt (Large),Apparel,25.00,S004
+P006,Damaged Product,Electronics,invalid_price,S001
+P007,Wireless Headphones,Electronics,89.99,S002
+P008,Office Chair,Office Supplies,199.99,S005
+P009,Smartphone,Electronics,699.99,S001
+P010,Water Bottle,Home Goods,19.99,S006
