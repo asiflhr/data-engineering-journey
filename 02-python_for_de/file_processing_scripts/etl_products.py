@@ -134,5 +134,68 @@ def run_etl_pipeline(config_file):
 
         
         # Extract Inventory from JSON
-        inventory_json_data = os.path.join(data_input_dir, f"inventory_{current_date_str}.json")
+        inventory_json_file = os.path.join(data_input_dir, f"inventory_{current_date_str}.json")
+        logging.info(f"Extracting inventory from {inventory_json_file}")
+        if os.path.exists(inventory_json_file):
+            with open(inventory_json_file, mode='r', encoding='utf-8') as infile:
+                for row_num, line in enumerate(infile, start=1): # Line numbers for JSON
+                    try:
+                        inventory_entry = json.loads(line.strip())
+
+                        product_id = inventory_entry.get('product_id', '').strip()
+                        stock_quantity_raw = inventory_entry.get('stock_quantity')
+                        last_updated_str = inventory_entry.get('last_updated', '').strip()
+
+                        validation_errors = []
+
+                        # Validation: product_id
+                        if not product_id:
+                            validation_errors.append(Missing product_id)
+
+                        # Validation: stock_quantity
+                        try:
+                            stock_quantity = int(stock_quantity_raw)
+                            if stock_quantity < 0:
+                                validation_errors.append(f"Stock quantity must be non-negative: '{stock_quantity_raw}'")
+                        except (ValueError, TypeError):
+                            validation_errors.append(f"Invalid stock_quantity format: '{stock_quantity_raw}'")
+                            stock_quantity = None
+
+                        # Validation: last_updated
+                        try:
+                            last_updated = pendulum.parse(last_updated_str)
+                        except (ValueError, TypeError):
+                            validation_errors.append(f"Invalid last_updated format: '{last_updated_str}'")
+                            last_updated = None
+
+                        if validation_errors:
+                            with open(bad_records_filepath, 'a', encoding='utf-8') as bad_file:
+                                json.dump({
+                                    "source": "inventory_json",
+                                    "row_data": inventory_entry,
+                                    "reason": validation_errors,
+                                    "timestamp": pendulum.now().to_iso8601_string()
+                                }, bad_file)
+                                bad_file.write('\n')
+                            logging.warning(f"Bad record from JSON (line {row_num}): {', '.join(validation_errors)}. Logged to bad records file.")
+                            continue
+
+                        inventory_data[product_id] = {
+                            'stock_quantity': stock_quantity,
+                            'last_updated': last_updated
+                        }
+                    except json.JSONDecodeError:
+                        logging.error(f"Invalid JSON line (line {row_num}): {line.strip()}. Logged to bad records.")
+                        with open(bad_records_filepath, 'a', encoding='utf-8') as bad_file:
+                            json.dump({
+                                "source": "inventory_json",
+                                "raw_line": line.strip(),
+                                "reason": ["JSON Decode Error"],
+                                "timestamp": pendulum.now().to_iso8601_string()
+                            }, bad_file)
+                            bad_file.write('\n')
+                        continue
+        else:
+            logging.warning(f"Inventory JSON file not found: {inventory_json_file}. Skipping inventory extraction.")
+
         
