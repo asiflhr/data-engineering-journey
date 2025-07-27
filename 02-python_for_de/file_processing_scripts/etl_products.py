@@ -150,7 +150,7 @@ def run_etl_pipeline(config_file):
 
                         # Validation: product_id
                         if not product_id:
-                            validation_errors.append(Missing product_id)
+                            validation_errors.append('Missing product_id')
 
                         # Validation: stock_quantity
                         try:
@@ -237,5 +237,78 @@ def run_etl_pipeline(config_file):
                     bad_file.write('\n')
 
         # --- Load into Database ---
-        logging.info(f"Loading {len{transformed_products}} valid products into database.")
-        
+        logging.info(f"Loading {len(transformed_products)} valid products into database.")
+        for product_dict in transformed_products:
+            try:
+                # User psycopg2 for direct interaction, or SQLAlchemy's upsert
+                stmt = pg_insert(Product.__table__).values(
+                    product_id = product_dict['product_id'],
+                    product_name = product_dict['product_name'],
+                    category = product_dict['category'],
+                    base_price = product_dict['base_price'],
+                    supplier_id = product_dict['supplier_id'],
+                    stock_quantity = product_dict['stock_quantity'],
+                    last_updated = product_dict['last_updated'],
+                    current_value = product_dict['current_value']
+                )
+                on_conflict_stmt = stmt.on_conflict_do_update(
+                    index_elements=[Product.product_id],
+                    set_={
+                        'product_name': stmt.excluded.product_name,
+                        'category': stmt.excluded.category,
+                        'base_price': stmt.excluded.base_price,
+                        'supplier_id': stmt.excluded.supplier_id,
+                        'stock_quantity': stmt.excluded.stock_quantity,
+                        'last_updated': stmt.excluded.last_updated,
+                        'current_value': stmt.excluded.current_value
+                    }
+                )
+                session.execute(on_conflict_stmt)
+                session.commit()
+            except Exception as e:
+                session.rollback()
+                logging.error(f"Failed to load product {product_dict.get['product_id', 'N/A']} into DB: {e}")
+                with open(bad_records_filepath, 'a', encoding='utf-8') as bad_file:
+                    json.dump({
+                        'source': "db_load_failure",
+                        'record': product_dict,
+                        'reason': [str(e)],
+                        'timestamp': pendulum.now().to_iso8601_string()
+                    }, bad_file)
+                    bad_file.write('\n')
+
+        session.close()
+        logging.info("ETL pipeline completed.")
+
+    except FileNotFoundError as e:
+        logging.error(f"Configuration or input file error: {e}")
+    except Exception as e:
+        logging.critical(f"An unhandled error occured during ETL: {e}", exc_info=True)
+
+
+if __name__ == "__main__":
+    current_script_dir = os.path.dirname(os.path.abspath(__file__))
+    config_file_path = os.path.join(current_script_dir, 'config.ini')
+
+    # Create dummy files and config if they don't exist for easy testing
+    data_dir = os.path.join(current_script_dir, 'data')
+    os.makedirs(data_dir, exist_ok=True)
+
+    # Create config.ini
+    if not os.path.exists(config_file_path):
+        with open(config_file_path, 'w') as f:
+            f.write('[database]\n')
+            f.write('db_host = localhost\n')
+            f.write('db_port = 5432\n')
+            f.write('db-name = your_db_de\n')
+            f.write("db_name = your_de_db\n")
+            f.write("db_user = your_user\n")
+            f.write("db_password = your_password\n") # IMPORTANT: Replace with your actual password!
+            f.write("\n[paths]\n")
+            f.write("data_input_dir = data\n")
+            f.write("processed_output_dir = processed_output\n")
+            f.write("bad_records_dir = bad_records\n")
+        logging.info(f"Created dummy config.ini at {config_file_path}. Please update database credentials!")
+    
+    # Create dummy products CSV
+    
