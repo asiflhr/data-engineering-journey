@@ -198,4 +198,44 @@ def run_etl_pipeline(config_file):
         else:
             logging.warning(f"Inventory JSON file not found: {inventory_json_file}. Skipping inventory extraction.")
 
+        # --- Transformation and Merges ---
+        transformed_products = []
+        for product_id, p_data in products_data.items():
+            combined_record = p_data.copy()
+            inventory_info = inventory_data.get(product_id)
+
+            if inventory_info:
+                combined_record['stock_quantity'] = inventory_info['stock_quantity']
+                combined_record['last_updated'] = inventory_info['last_updated']
+
+                # Calculate CurrentValue
+                if combined_record['base_price'] is not None and combined_record['stock_quantity'] is not None:
+                    combined_record['current_value'] = combined_record['base_price'] * combined_record['stock_quantity']
+                else:
+                    combined_record['current_value'] = 0.0 # Default if base_price or quantity is invalid
+                    logging.warning(f"Could not calculate CurrentValue for ProductID {product_id} due to invalid price/quantity.")
+            else:
+                logging.warning(f"No inventory data found for ProductID: {product_id}. Setting stock/value to 0/None.")
+                combined_record['stock_quantity'] = 0
+                combined_record['last_updated'] = None
+                combined_record['current_value'] = 0.0
+
+            transformed_products.append(combined_record)
+
+        # Log inventory records that didn't match any product
+        for inv_prod_id in inventory_data.keys():
+            if inv_prod_id not in products_data:
+                logging.warning(f"Inventory record for ProductID {inv_prod_id} has no matching product details. Not loaded.")
+                with open(bad_records_filepath, 'a', encoding='utf-8') as bad_file:
+                    json.dump({
+                        "source": "unmatched_inventory",
+                        "product_id": inv_prod_id,
+                        "inventory_data": inventory_data[inv_prod_id],
+                        "reason": ["No matching product details found"],
+                        "timestamp": pendulum.now().to_iso8601_string()
+                    }, bad_file)
+                    bad_file.write('\n')
+
+        # --- Load into Database ---
+        logging.info(f"Loading {len{transformed_products}} valid products into database.")
         
