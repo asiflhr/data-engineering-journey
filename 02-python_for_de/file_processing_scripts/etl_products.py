@@ -311,4 +311,27 @@ if __name__ == "__main__":
         logging.info(f"Created dummy config.ini at {config_file_path}. Please update database credentials!")
     
     # Create dummy products CSV
-    
+    products_csv_path = os.path.join(data_dir, f"products_{pendulum.now().format('YYYYMMDD')}.csv")
+    if not os.path.exists(products_csv_path):
+        with open(products_csv_path, 'w', newline='') as f:
+            f.write("ProductID,Name,Category,BasePrice,SupplierID\n")
+            f.write("P001,Laptop Pro,Electronics,1200.00,S001\n")
+            f.write("P002,Mechanical Keyboard,Electronics,120.00,S002\n")
+            f.write("P003,Mystery Novel,Books,15.50,S003\n")
+            f.write("P004,Ergonomic Mouse,Electronics,45.00,S001\n")
+            f.write("P005,T-Shirt (Large),Apparel,25.00,S004\n")
+            f.write("P006,Damaged Product,Electronics,invalid_price,S001\n") # Bad record
+            f.write("P007,New Gadget,Electronics,750.00,S005\n") # New product
+
+    # Create dummy inventory JSONL
+    inventory_json_path = os.path.join(data_dir, f"inventory_{pendulum.now().format('YYYYMMDD')}.json")
+    if not os.path.exists(inventory_json_path):
+        with open(inventory_json_path, 'w', newline='') as f:
+            f.write(json.dumps({"product_id": "P001", "stock_quantity": 15, "last_updated": "2025-07-25T10:00:00Z"}) + '\n')
+            f.write(json.dumps({"product_id": "P002", "stock_quantity": 50, "last_updated": "2025-07-25T10:05:00Z"}) + '\n')
+            f.write(json.dumps({"product_id": "P003", "stock_quantity": 100, "last_updated": "2025-07-25T10:10:00Z"}) + '\n')
+            f.write(json.dumps({"product_id": "P005", "stock_quantity": 20, "last_updated": "2025-07-25T10:15:00Z"}) + '\n')
+            f.write(json.dumps({"product_id": "P_INVALID", "stock_quantity": 5, "last_updated": "2025-07-25T10:20:00Z"}) + '\n') # Unmatched inventory
+            f.write(json.dumps({"product_id": "P007", "stock_quantity": 30, "last_updated": "2025-07-25T11:00:00Z"}) + '\n') # New product inventory
+
+    run_etl_pipeline(config_file_path)
