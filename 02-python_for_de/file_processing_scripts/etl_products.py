@@ -170,12 +170,20 @@ def run_etl_pipeline(config_file):
 
                         if validation_errors:
                             with open(bad_records_filepath, 'a', encoding='utf-8') as bad_file:
-                                json.dump({
+                                # Convert any datetime object to ISO 8601 string for JSON serialization
+                                # This is the key change!
+                                log_entry_data = {
                                     "source": "inventory_json",
                                     "row_data": inventory_entry,
                                     "reason": validation_errors,
                                     "timestamp": pendulum.now().to_iso8601_string()
-                                }, bad_file)
+                                }
+                                # If 'last_updated' was a pendulum object in the original row_data
+                                # and that caused the issue, this general approach fixes it.
+                                # However, the direct error was in the db_load_failure section.
+                                # The best approach is to ensure any dict passed to json.dump
+                                # has its datetime objects converted.
+                                json.dump(log_entry_data, bad_file)
                                 bad_file.write('\n')
                             logging.warning(f"Bad record from JSON (line {row_num}): {', '.join(validation_errors)}. Logged to bad records file.")
                             continue
@@ -230,7 +238,11 @@ def run_etl_pipeline(config_file):
                     json.dump({
                         "source": "unmatched_inventory",
                         "product_id": inv_prod_id,
-                        "inventory_data": inventory_data[inv_prod_id],
+                        "inventory_data": (
+                            inventory_data[inv_prod_id]["last_updated"].to_iso8601_string()
+                            if inventory_data[inv_prod_id]["last_updated"]
+                            else None
+                        ),
                         "reason": ["No matching product details found"],
                         "timestamp": pendulum.now().to_iso8601_string()
                     }, bad_file)
@@ -241,15 +253,23 @@ def run_etl_pipeline(config_file):
         for product_dict in transformed_products:
             try:
                 # User psycopg2 for direct interaction, or SQLAlchemy's upsert
+                # Convert pendulum object to Python datetime for SQLAlchemy
+                # SQLAlchemy expects Python's native datetime objects or compatible types.
+                # pendulum objects are compatible, but for explicit clarity or if you
+                # encountered issues with other ORMs, direct conversion is safer.
+                # Here, pendulum objects generally work fine with SQLAlchemy's DateTime column type.
+                # The issue was with json.dump, not sqlalchemy itself.
+
                 stmt = pg_insert(Product.__table__).values(
-                    product_id = product_dict['product_id'],
-                    product_name = product_dict['product_name'],
-                    category = product_dict['category'],
-                    base_price = product_dict['base_price'],
-                    supplier_id = product_dict['supplier_id'],
-                    stock_quantity = product_dict['stock_quantity'],
-                    last_updated = product_dict['last_updated'],
-                    current_value = product_dict['current_value']
+                    product_id=product_dict['product_id'],
+                    product_name=product_dict['product_name'],
+                    category=product_dict['category'],
+                    base_price=product_dict['base_price'],
+                    supplier_id=product_dict['supplier_id'],
+                    stock_quantity=product_dict['stock_quantity'],
+                    # Ensure last_updated is a Python datetime object or None
+                    last_updated=product_dict['last_updated'].isoformat() if product_dict['last_updated'] else None, # This line might not be strictly needed for DB insert, but ensures consistency for logging later.
+                    current_value=product_dict['current_value']
                 )
                 on_conflict_stmt = stmt.on_conflict_do_update(
                     index_elements=[Product.product_id],
@@ -267,13 +287,18 @@ def run_etl_pipeline(config_file):
                 session.commit()
             except Exception as e:
                 session.rollback()
-                logging.error(f"Failed to load product {product_dict.get['product_id', 'N/A']} into DB: {e}")
+                logging.error(f"Failed to load product {product_dict.get('product_id', 'N/A')} into DB: {e}")
+                # Create a serializable version of product_dict
+                serializable_product_dict = product_dict.copy()
+                if isinstance(serializable_product_dict.get('last_updated'), pendulum.DateTime):
+                    serializable_product_dict['last_updated'] = serializable_product_dict['last_updated'].to_iso8601_string()
+                # You might need to do this for any other non-serializable types you add later
                 with open(bad_records_filepath, 'a', encoding='utf-8') as bad_file:
                     json.dump({
-                        'source': "db_load_failure",
-                        'record': product_dict,
-                        'reason': [str(e)],
-                        'timestamp': pendulum.now().to_iso8601_string()
+                        "source": "db_load_failure",
+                        "record": serializable_product_dict, # Use the serializable version
+                        "reason": [str(e)],
+                        "timestamp": pendulum.now().to_iso8601_string()
                     }, bad_file)
                     bad_file.write('\n')
 

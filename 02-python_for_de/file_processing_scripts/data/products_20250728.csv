@@ -1,0 +1,8 @@
+ProductID,Name,Category,BasePrice,SupplierID
+P001,Laptop Pro,Electronics,1200.00,S001
+P002,Mechanical Keyboard,Electronics,120.00,S002
+P003,Mystery Novel,Books,15.50,S003
+P004,Ergonomic Mouse,Electronics,45.00,S001
+P005,T-Shirt (Large),Apparel,25.00,S004
+P006,Damaged Product,Electronics,invalid_price,S001
+P007,New Gadget,Electronics,750.00,S005

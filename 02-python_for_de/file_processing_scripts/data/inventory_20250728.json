@@ -1,0 +1,6 @@
+{"product_id": "P001", "stock_quantity": 15, "last_updated": "2025-07-25T10:00:00Z"}
+{"product_id": "P002", "stock_quantity": 50, "last_updated": "2025-07-25T10:05:00Z"}
+{"product_id": "P003", "stock_quantity": 100, "last_updated": "2025-07-25T10:10:00Z"}
+{"product_id": "P005", "stock_quantity": 20, "last_updated": "2025-07-25T10:15:00Z"}
+{"product_id": "P_INVALID", "stock_quantity": 5, "last_updated": "2025-07-25T10:20:00Z"}
+{"product_id": "P007", "stock_quantity": 30, "last_updated": "2025-07-25T11:00:00Z"}
